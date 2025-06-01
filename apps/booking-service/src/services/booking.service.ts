@@ -25,6 +25,9 @@ export class BookingService {
     console.log('📝 Creating booking with data:', createBookingDto, 'for user:', userId);
     
     try {
+      // Step 0: Validate user doesn't already have pending or confirmed booking for this event
+      await this.validateUniqueBookingForUser(userId, createBookingDto.eventId, createBookingDto.seatIds);
+
       // Generate booking ID first
       const bookingId = `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
@@ -64,60 +67,111 @@ export class BookingService {
         }
       }
 
-      // Step 2: Create booking record in database
+      // Step 2: Create booking record in database with transaction safety
       console.log('✅ Redis reservation successful. Creating booking record...');
-      const booking = this.bookingRepository.create({
-        id: bookingId,
-        userId,
-        eventId: createBookingDto.eventId,
-        seatIds: createBookingDto.seatIds,
-        status: 'pending',
-        totalAmount: createBookingDto.seatIds.length * 50, // $50 per seat for demo
-        expiresAt: new Date(Date.now() + 30 * 1000), // 30 seconds for demo
-      });
       
-      const savedBooking = await this.bookingRepository.save(booking);
-      console.log('✅ Booking created successfully:', savedBooking.id);
+      try {
+        const booking = this.bookingRepository.create({
+          id: bookingId,
+          userId,
+          eventId: createBookingDto.eventId,
+          seatIds: createBookingDto.seatIds,
+          status: 'pending',
+          totalAmount: createBookingDto.seatIds.length * 50, // $50 per seat for demo
+          expiresAt: new Date(Date.now() + 30 * 1000), // 30 seconds for demo
+        });
+        
+        const savedBooking = await this.bookingRepository.save(booking);
+        console.log('✅ Booking created successfully:', savedBooking.id);
 
-      // Step 3: Emit booking created event for real-time updates
-      this.eventClient.emit('booking.created', {
-        bookingId: savedBooking.id,
-        userId: savedBooking.userId,
-        eventId: savedBooking.eventId,
-        seatIds: savedBooking.seatIds,
-        totalAmount: savedBooking.totalAmount,
-        status: savedBooking.status,
-        createdAt: savedBooking.createdAt,
-        expiresAt: savedBooking.expiresAt
-      });
+        // Step 3: Emit booking created event for real-time updates
+        this.eventClient.emit('booking.created', {
+          bookingId: savedBooking.id,
+          userId: savedBooking.userId,
+          eventId: savedBooking.eventId,
+          seatIds: savedBooking.seatIds,
+          totalAmount: savedBooking.totalAmount,
+          status: savedBooking.status,
+          createdAt: savedBooking.createdAt,
+          expiresAt: savedBooking.expiresAt
+        });
 
-      // Step 4: Start timeout job for this booking
-      this.scheduleBookingTimeout(savedBooking.id, 30 * 1000); // 30 seconds for demo
+        // Step 4: Start timeout job for this booking
+        this.scheduleBookingTimeout(savedBooking.id, 30 * 1000); // 30 seconds for demo
 
-      return {
-        id: savedBooking.id,
-        userId: savedBooking.userId,
-        eventId: savedBooking.eventId,
-        seatIds: savedBooking.seatIds,
-        totalAmount: savedBooking.totalAmount,
-        status: savedBooking.status as any,
-        createdAt: savedBooking.createdAt,
-        updatedAt: savedBooking.updatedAt,
-        expiresAt: savedBooking.expiresAt,
-      };
+        return {
+          id: savedBooking.id,
+          userId: savedBooking.userId,
+          eventId: savedBooking.eventId,
+          seatIds: savedBooking.seatIds,
+          totalAmount: savedBooking.totalAmount,
+          status: savedBooking.status as any,
+          createdAt: savedBooking.createdAt,
+          updatedAt: savedBooking.updatedAt,
+          expiresAt: savedBooking.expiresAt,
+        };
+
+      } catch (dbError: any) {
+        // If database constraint violation occurred, release Redis reservations
+        console.log('❌ Database constraint violation - releasing Redis reservations');
+        await this.redisSeatService.releaseSeats(createBookingDto.eventId, createBookingDto.seatIds);
+        
+        // Check if it's a unique constraint violation
+        if (dbError.code === '23505') { // PostgreSQL unique constraint violation
+          if (dbError.constraint?.includes('unique_user_event_pending')) {
+            throw new Error('You already have a pending booking for this event. Please complete or cancel your existing booking first.');
+          } else if (dbError.constraint?.includes('unique_user_event_seats_confirmed')) {
+            throw new Error('You have already confirmed a booking for these seats. Duplicate bookings are not allowed.');
+          } else {
+            throw new Error('A booking conflict occurred. Please try again with different seats.');
+          }
+        }
+        
+        throw dbError;
+      }
 
     } catch (error) {
       console.error('❌ Error creating booking:', error.message);
-      
-      // If we have a booking ID, make sure to clean up Redis reservations
-      if (error.message.includes('booking_')) {
-        const bookingIdMatch = error.message.match(/booking_\w+/);
-        if (bookingIdMatch) {
-          await this.redisSeatService.releaseSeats(createBookingDto.eventId, createBookingDto.seatIds);
-        }
-      }
-      
       throw error;
+    }
+  }
+
+  /**
+   * Validate that user doesn't already have bookings that would conflict
+   */
+  private async validateUniqueBookingForUser(userId: string, eventId: string, seatIds: string[]): Promise<void> {
+    // Check for existing pending booking for this event
+    const existingPendingBooking = await this.bookingRepository.findOne({
+      where: { 
+        userId, 
+        eventId, 
+        status: 'pending' 
+      }
+    });
+
+    if (existingPendingBooking) {
+      throw new Error('You already have a pending booking for this event. Please complete or cancel your existing booking first.');
+    }
+
+    // Check for confirmed bookings with overlapping seats
+    const confirmedBookings = await this.bookingRepository.find({
+      where: { 
+        userId, 
+        eventId, 
+        status: 'confirmed' 
+      }
+    });
+
+    for (const booking of confirmedBookings) {
+      const overlappingSeats = booking.seatIds.filter(seatId => seatIds.includes(seatId));
+      if (overlappingSeats.length > 0) {
+        const seatNames = overlappingSeats.map(seatId => {
+          const seatCode = seatId.split('_').pop();
+          return seatCode;
+        }).join(', ');
+        
+        throw new Error(`You have already booked seat(s) ${seatNames} for this event. Duplicate bookings are not allowed.`);
+      }
     }
   }
 
@@ -133,7 +187,11 @@ export class BookingService {
     }
 
     if (booking.status !== 'pending') {
-      throw new Error(`Cannot confirm booking with status: ${booking.status}`);
+      if (booking.status === 'confirmed') {
+        throw new Error('This booking has already been confirmed and paid for.');
+      } else {
+        throw new Error(`Cannot confirm booking with status: ${booking.status}`);
+      }
     }
 
     // Check if booking has expired
@@ -141,37 +199,74 @@ export class BookingService {
       throw new Error('⏰ Booking has expired. Please create a new booking.');
     }
 
-    // Step 1: Update booking status to confirmed
-    booking.status = 'confirmed';
-    booking.updatedAt = new Date();
-    
-    const updatedBooking = await this.bookingRepository.save(booking);
-    console.log('✅ Booking confirmed successfully - seats are now permanently booked');
-
-    // Step 2: Release Redis reservations (seats are now permanently booked)
-    await this.redisSeatService.releaseSeats(booking.eventId, booking.seatIds);
-
-    // Step 3: Emit booking confirmed event for real-time updates
-    this.eventClient.emit('booking.confirmed', {
-      bookingId: updatedBooking.id,
-      userId: updatedBooking.userId,
-      eventId: updatedBooking.eventId,
-      seatIds: updatedBooking.seatIds,
-      totalAmount: updatedBooking.totalAmount,
-      status: updatedBooking.status,
-      updatedAt: updatedBooking.updatedAt
+    // Additional validation: Ensure user doesn't already have confirmed booking for same seats
+    const existingConfirmedBooking = await this.bookingRepository.findOne({
+      where: {
+        userId: booking.userId,
+        eventId: booking.eventId,
+        status: 'confirmed'
+      }
     });
 
-    return {
-      id: updatedBooking.id,
-      userId: updatedBooking.userId,
-      eventId: updatedBooking.eventId,
-      seatIds: updatedBooking.seatIds,
-      totalAmount: updatedBooking.totalAmount,
-      status: updatedBooking.status as any,
-      createdAt: updatedBooking.createdAt,
-      updatedAt: updatedBooking.updatedAt,
-    };
+    if (existingConfirmedBooking) {
+      // Check for seat overlap
+      const overlappingSeats = existingConfirmedBooking.seatIds.filter(seatId => 
+        booking.seatIds.includes(seatId)
+      );
+      
+      if (overlappingSeats.length > 0) {
+        const seatNames = overlappingSeats.map(seatId => {
+          const seatCode = seatId.split('_').pop();
+          return seatCode;
+        }).join(', ');
+        
+        throw new Error(`Payment failed: You already have confirmed tickets for seat(s) ${seatNames}. Duplicate bookings are not allowed.`);
+      }
+    }
+
+    try {
+      // Step 1: Update booking status to confirmed with database transaction safety
+      booking.status = 'confirmed';
+      booking.updatedAt = new Date();
+      
+      const updatedBooking = await this.bookingRepository.save(booking);
+      console.log('✅ Booking confirmed successfully - seats are now permanently booked');
+
+      // Step 2: Release Redis reservations (seats are now permanently booked)
+      await this.redisSeatService.releaseSeats(booking.eventId, booking.seatIds);
+
+      // Step 3: Emit booking confirmed event for real-time updates
+      this.eventClient.emit('booking.confirmed', {
+        bookingId: updatedBooking.id,
+        userId: updatedBooking.userId,
+        eventId: updatedBooking.eventId,
+        seatIds: updatedBooking.seatIds,
+        totalAmount: updatedBooking.totalAmount,
+        status: updatedBooking.status,
+        updatedAt: updatedBooking.updatedAt
+      });
+
+      return {
+        id: updatedBooking.id,
+        userId: updatedBooking.userId,
+        eventId: updatedBooking.eventId,
+        seatIds: updatedBooking.seatIds,
+        totalAmount: updatedBooking.totalAmount,
+        status: updatedBooking.status as any,
+        createdAt: updatedBooking.createdAt,
+        updatedAt: updatedBooking.updatedAt,
+      };
+
+    } catch (dbError: any) {
+      // Handle database constraint violations during confirmation
+      if (dbError.code === '23505') { // PostgreSQL unique constraint violation
+        if (dbError.constraint?.includes('unique_user_event_seats_confirmed')) {
+          throw new Error('Payment failed: You have already confirmed a booking for these seats. Duplicate bookings are not allowed.');
+        }
+      }
+      
+      throw new Error(`Payment confirmation failed: ${dbError.message || 'Database error occurred'}`);
+    }
   }
 
   async cancelBooking(bookingId: string): Promise<Booking> {

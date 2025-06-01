@@ -26,35 +26,28 @@ api.interceptors.response.use(
   }
 );
 
-// Demo users for the seminar (with real credentials)
+// Demo users for the seminar (synced with Postman collection)
 export const DEMO_USERS = [
   {
-    id: 'demo1',
-    email: 'demo1@test.com',
-    name: 'Alice (Regular)',
-    tier: 'regular' as const,
-    password: 'demo123'
-  },
-  {
-    id: 'demo2',
-    email: 'demo2@test.com',
-    name: 'Bob (Premium)', 
+    id: 'alice',
+    email: 'alice@demo.com',
+    name: 'Alice Johnson',
     tier: 'premium' as const,
     password: 'demo123'
   },
   {
-    id: 'demo3',
-    email: 'demo3@test.com',
-    name: 'Carol (VIP)',
-    tier: 'vip' as const,
+    id: 'bob',
+    email: 'bob@demo.com',
+    name: 'Bob Smith', 
+    tier: 'regular' as const,
     password: 'demo123'
   },
   {
-    id: 'admin',
-    email: 'admin@test.com',
-    name: 'Admin (VIP)',
+    id: 'charlie',
+    email: 'charlie@demo.com',
+    name: 'Charlie Wilson',
     tier: 'vip' as const,
-    password: 'admin123'
+    password: 'demo123'
   }
 ];
 
@@ -137,7 +130,7 @@ export const restoreAuthState = (): User | null => {
   if (token && userJson) {
     try {
       const user = JSON.parse(userJson);
-      setAuthToken(token);
+    setAuthToken(token);
       currentAuthenticatedUser = user;
       console.log('🔄 Restored auth state for:', user.name);
       return user;
@@ -166,7 +159,7 @@ export const getCurrentUser = (): User | null => {
   if (userJson) {
     try {
       currentAuthenticatedUser = JSON.parse(userJson);
-      return currentAuthenticatedUser;
+  return currentAuthenticatedUser;
     } catch (error) {
       console.error('Failed to parse user from sessionStorage:', error);
       sessionStorage.removeItem('currentUser');
@@ -241,7 +234,7 @@ export const fetchRealtimeSeatStatus = async (eventId: string): Promise<{
 export const createBooking = async (eventId: string, seatId: string): Promise<{ data: Booking }> => {
   try {
     const response = await api.post('/bookings', {
-      eventId,
+        eventId,
       seatIds: [seatId]
     });
     

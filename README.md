@@ -49,6 +49,28 @@ A comprehensive ticket booking system built with NestJS and Kafka, demonstrating
 
 > 📖 **See [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md) for detailed database design rationale**
 
+## 🔒 **Unique Booking Constraints**
+
+The system enforces **strict unique constraints** to prevent duplicate bookings and ensure data integrity:
+
+### **Database-Level Protection**
+- ✅ **One pending booking per user per event**: Prevents multiple simultaneous reservations
+- ✅ **No duplicate confirmed bookings**: Users cannot book same seats twice
+- ✅ **Payment protection**: Cannot pay multiple times for same booking
+- ✅ **Atomic operations**: Race conditions prevented by PostgreSQL constraints
+
+### **Application-Level Validation**
+- ✅ **Pre-booking checks**: Validate before database interaction
+- ✅ **Clear error messages**: User-friendly feedback for constraint violations
+- ✅ **Redis coordination**: Seat reservations coordinated across services
+
+### **User Experience Benefits**
+- ✅ **No accidental double-bookings**: System prevents user mistakes
+- ✅ **Fair process**: First-come-first-served strictly enforced
+- ✅ **Clear feedback**: Helpful error messages guide user actions
+
+> 📖 **See [UNIQUE_BOOKING_CONSTRAINTS.md](./UNIQUE_BOOKING_CONSTRAINTS.md) for complete implementation details**
+
 ### 🎯 Key Features
 
 - **Event-Driven Architecture**: Asynchronous communication via Kafka

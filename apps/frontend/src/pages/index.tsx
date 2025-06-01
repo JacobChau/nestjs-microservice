@@ -5,6 +5,7 @@ import SeatMap from '@/components/SeatMap'
 import BookingPanel from '@/components/BookingPanel'
 import UserSelector from '@/components/UserSelector'
 import ActivityLog from '@/components/ActivityLog'
+import DemoGuide from '@/components/DemoGuide'
 import { Event, Seat, User } from '@/types'
 import { fetchEvents, fetchSeats, restoreAuthState } from '@/services/api'
 import toast from 'react-hot-toast'
@@ -291,7 +292,7 @@ export default function Home() {
 
           {/* Enhanced Demo Controls */}
           <div className="mt-8 card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">🎮 Demo Controls</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">🎯 Demo Controls</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <button 
                 onClick={loadEvents}
@@ -345,6 +346,11 @@ export default function Home() {
                 <p>• <strong>User tiers:</strong> Different users have access to different seat types</p>
               </div>
             </div>
+          </div>
+
+          {/* Demo Guide - Sync with Postman */}
+          <div className="mt-6">
+            <DemoGuide currentUser={currentUser} />
           </div>
         </div>
       </div>

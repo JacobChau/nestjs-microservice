@@ -96,7 +96,7 @@ const SeatMap: React.FC<SeatMapProps> = ({
     if (selectedSeat?.id === seat.id) {
       return 'bg-blue-600 text-white border-blue-700'; // Selected
     }
-
+    
     switch (seat.status) {
       case 'available':
         return seat.type === 'premium' 
@@ -257,11 +257,11 @@ const SeatMap: React.FC<SeatMapProps> = ({
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
           <div className="text-2xl font-bold text-green-600">{stats.available}</div>
           <div className="text-green-700">Available</div>
-        </div>
+          </div>
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
           <div className="text-2xl font-bold text-orange-600">{stats.reserved}</div>
           <div className="text-orange-700">Reserved</div>
-        </div>
+          </div>
         {stats.myReservations > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
             <div className="text-2xl font-bold text-blue-600">{stats.myReservations}</div>
@@ -293,15 +293,15 @@ const SeatMap: React.FC<SeatMapProps> = ({
           <div key={row} className="flex items-center justify-center space-x-2">
             {/* Row Label */}
             <div className="w-8 text-center font-semibold text-gray-700">
-              {row}
-            </div>
-            
+                {row}
+              </div>
+              
             {/* Seats in Row */}
             <div className="flex space-x-2">
               {seatsByRow[row].map(seat => (
-                <button
-                  key={seat.id}
-                  onClick={() => handleSeatClick(seat)}
+                  <button
+                    key={seat.id}
+                    onClick={() => handleSeatClick(seat)}
                   title={getSeatTooltip(seat)}
                   className={`
                     w-12 h-12 rounded-lg border-2 text-xs font-medium
@@ -309,20 +309,20 @@ const SeatMap: React.FC<SeatMapProps> = ({
                     transition-all duration-200 transform hover:scale-105
                     ${getSeatColor(seat)}
                   `}
-                  disabled={
-                    seat.status === 'booked' || 
-                    seat.status === 'confirmed' || 
-                    (seat.status === 'reserved' && seat.reservedBy !== currentUser?.id)
-                  }
-                >
+                    disabled={
+                      seat.status === 'booked' || 
+                      seat.status === 'confirmed' ||
+                      (seat.status === 'reserved' && seat.reservedBy !== currentUser?.id)
+                    }
+                  >
                   <div className="text-center">
                     <div className="text-lg">{getSeatIcon(seat)}</div>
                     <div className="text-xs">{seat.number}</div>
                   </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
         ))}
       </div>
 
@@ -373,7 +373,7 @@ const SeatMap: React.FC<SeatMapProps> = ({
             <span>Selected</span>
           </div>
         </div>
-      </div>
+            </div>
 
       {/* Real-time Updates Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">

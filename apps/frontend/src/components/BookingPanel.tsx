@@ -61,6 +61,9 @@ const BookingPanel: React.FC<BookingPanelProps> = ({
     if (errorMessage.includes('conflict') || errorMessage.includes('race') || errorMessage.includes('faster')) return 'race-condition';
     if (errorMessage.includes('Network') || errorMessage.includes('connection') || errorMessage.includes('temporarily unavailable')) return 'network';
     if (errorMessage.includes('timeout') || errorMessage.includes('Request timeout')) return 'timeout';
+    if (errorMessage.includes('already have a pending booking') || errorMessage.includes('pending booking for this event')) return 'duplicate-pending';
+    if (errorMessage.includes('already booked') || errorMessage.includes('already confirmed') || errorMessage.includes('Duplicate bookings are not allowed')) return 'duplicate-confirmed';
+    if (errorMessage.includes('already been confirmed and paid for')) return 'already-paid';
     return 'generic';
   };
 
@@ -72,6 +75,9 @@ const BookingPanel: React.FC<BookingPanelProps> = ({
       case 'race-condition': return '⚡';
       case 'network': return '🌐';
       case 'timeout': return '⏰';
+      case 'duplicate-pending': return '⏳';
+      case 'duplicate-confirmed': return '🎫';
+      case 'already-paid': return '✅';
       default: return '❌';
     }
   };
@@ -84,6 +90,9 @@ const BookingPanel: React.FC<BookingPanelProps> = ({
       case 'race-condition': return 'Booking Conflict';
       case 'network': return 'Connection Problem';
       case 'timeout': return 'Request Timeout';
+      case 'duplicate-pending': return 'Existing Booking Found';
+      case 'duplicate-confirmed': return 'Already Booked';
+      case 'already-paid': return 'Payment Already Completed';
       default: return 'Booking Error';
     }
   };
@@ -96,6 +105,9 @@ const BookingPanel: React.FC<BookingPanelProps> = ({
       case 'race-condition': return 'Someone else was faster - refresh and choose another seat';
       case 'network': return 'Check your connection and try again';
       case 'timeout': return 'Server is busy - wait a moment and retry';
+      case 'duplicate-pending': return 'Complete or cancel your existing booking before making a new one';
+      case 'duplicate-confirmed': return 'Check "My Bookings" to see your confirmed tickets';
+      case 'already-paid': return 'This booking is already complete - check your tickets';
       default: return 'Please try again or contact support';
     }
   };
@@ -150,6 +162,16 @@ const BookingPanel: React.FC<BookingPanelProps> = ({
           duration: 6000,
           icon: '🏃‍♂️'
         });
+      } else if (errorType === 'duplicate-pending') {
+        toast.error('⏳ You have an existing booking! Complete it first.', { 
+          duration: 8000,
+          icon: '📋'
+        });
+      } else if (errorType === 'duplicate-confirmed') {
+        toast.error('🎫 You already booked these seats!', { 
+          duration: 8000,
+          icon: '✅'
+        });
       } else {
         toast.error(`❌ ${error.message}`, { duration: 6000 });
       }
@@ -189,10 +211,25 @@ const BookingPanel: React.FC<BookingPanelProps> = ({
       
     } catch (error: any) {
       console.error('Payment failed:', error);
+      const errorType = getErrorType(error.message);
       setError(error.message);
       setStep('error');
       onActivity(`❌ Payment failed for ${user.name}: ${error.message}`);
-      toast.error(`💳 Payment failed: ${error.message}`, { duration: 6000 });
+      
+      // Show appropriate toast based on error type
+      if (errorType === 'duplicate-confirmed') {
+        toast.error('🎫 Payment failed: You already have tickets for these seats!', { 
+          duration: 8000,
+          icon: '⚠️'
+        });
+      } else if (errorType === 'already-paid') {
+        toast.error('✅ This booking is already paid and confirmed!', { 
+          duration: 8000,
+          icon: '🎉'
+        });
+      } else {
+        toast.error(`💳 Payment failed: ${error.message}`, { duration: 6000 });
+      }
     } finally {
       setLoading(false);
     }
