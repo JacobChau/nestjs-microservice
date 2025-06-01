@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Ticket Booking Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .event-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .event-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .event-venue {
+            font-size: 1em;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+
+        .seat-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .seat-count {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .seat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-live {
+            background: #2ecc71;
+            animation: pulse 2s infinite;
+        }
+
+        .status-error {
+            background: #e74c3c;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .last-update {
+            text-align: center;
+            margin-top: 20px;
+            opacity: 0.7;
+            font-size: 0.9em;
+        }
+
+        .booking-activity {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .activity-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .activity-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .activity-item {
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            opacity: 0.6;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 Real-time Ticket Booking Monitor</h1>
+            <div class="subtitle">
+                <span class="status-indicator status-live"></span>
+                Live monitoring of microservice booking system
+            </div>
+        </div>
+
+        <div class="events-grid" id="eventsGrid">
+            <!-- Events will be populated here -->
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalBookings">0</div>
+                <div class="stat-label">Total Bookings</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activeUsers">0</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgResponseTime">0ms</div>
+                <div class="stat-label">Avg Response Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="systemLoad">0%</div>
+                <div class="stat-label">System Load</div>
+            </div>
+        </div>
+
+        <div class="booking-activity">
+            <div class="activity-title">📊 Recent Booking Activity</div>
+            <div class="activity-log" id="activityLog">
+                <div class="activity-item">
+                    <span class="timestamp">12:34:56</span>
+                    System monitoring started...
+                </div>
+            </div>
+        </div>
+
+        <div class="last-update">
+            Last updated: <span id="lastUpdate">Never</span>
+        </div>
+    </div>
+
+    <script>
+        class BookingMonitor {
+            constructor() {
+                this.baseUrl = 'http://localhost:3000';
+                this.events = [];
+                this.totalBookings = 0;
+                this.activeUsers = 0;
+                this.responseTimes = [];
+                this.updateInterval = 2000; // 2 seconds
+                this.maxActivityItems = 20;
+            }
+
+            async init() {
+                await this.loadEvents();
+                this.startMonitoring();
+                this.addActivity('🚀 Real-time monitoring initialized');
+            }
+
+            async loadEvents() {
+                try {
+                    const response = await fetch(`${this.baseUrl}/events`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.events = data.data;
+                        this.renderEvents();
+                        this.addActivity(`📋 Loaded ${this.events.length} events`);
+                    }
+                } catch (error) {
+                    console.error('Failed to load events:', error);
+                    this.addActivity('❌ Failed to load events');
+                }
+            }
+
+            renderEvents() {
+                const grid = document.getElementById('eventsGrid');
+                grid.innerHTML = '';
+
+                this.events.forEach(event => {
+                    const bookedSeats = event.totalSeats - event.availableSeats;
+                    const bookingPercentage = (bookedSeats / event.totalSeats) * 100;
+
+                    const eventCard = document.createElement('div');
+                    eventCard.className = 'event-card';
+                    eventCard.innerHTML = `
+                        <div class="event-title">${event.name}</div>
+                        <div class="event-venue">📍 ${event.venue}</div>
+                        
+                        <div class="seat-info">
+                            <div>
+                                <div class="seat-count">${event.availableSeats}</div>
+                                <div class="seat-label">Available Seats</div>
+                            </div>
+                            <div>
+                                <div class="seat-count">${bookedSeats}</div>
+                                <div class="seat-label">Booked</div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${bookingPercentage}%"></div>
+                        </div>
+                        
+                        <div style="text-align: center; font-size: 0.9em; opacity: 0.8;">
+                            ${bookingPercentage.toFixed(1)}% booked (${event.totalSeats} total)
+                        </div>
+                    `;
+                    
+                    grid.appendChild(eventCard);
+                });
+            }
+
+            async updateEventData() {
+                try {
+                    const response = await fetch(`${this.baseUrl}/events`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const oldEvents = [...this.events];
+                        this.events = data.data;
+                        
+                        // Check for changes and log activity
+                        this.events.forEach((event, index) => {
+                            const oldEvent = oldEvents[index];
+                            if (oldEvent && oldEvent.availableSeats !== event.availableSeats) {
+                                const seatsBooked = oldEvent.availableSeats - event.availableSeats;
+                                if (seatsBooked > 0) {
+                                    this.addActivity(`🎫 ${seatsBooked} seat(s) booked for ${event.name}`);
+                                    this.totalBookings += seatsBooked;
+                                }
+                            }
+                        });
+                        
+                        this.renderEvents();
+                        this.updateStats();
+                    }
+                } catch (error) {
+                    console.error('Failed to update events:', error);
+                    this.addActivity('⚠️ Connection error - retrying...');
+                }
+            }
+
+            updateStats() {
+                // Simulate some dynamic stats for demo purposes
+                this.activeUsers = Math.floor(Math.random() * 50) + 10;
+                
+                // Simulate response time
+                const newResponseTime = Math.floor(Math.random() * 200) + 50;
+                this.responseTimes.push(newResponseTime);
+                if (this.responseTimes.length > 10) {
+                    this.responseTimes.shift();
+                }
+                
+                const avgResponseTime = this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length;
+                const systemLoad = Math.floor(Math.random() * 30) + 20;
+
+                document.getElementById('totalBookings').textContent = this.totalBookings;
+                document.getElementById('activeUsers').textContent = this.activeUsers;
+                document.getElementById('avgResponseTime').textContent = `${Math.round(avgResponseTime)}ms`;
+                document.getElementById('systemLoad').textContent = `${systemLoad}%`;
+                
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            }
+
+            addActivity(message) {
+                const log = document.getElementById('activityLog');
+                const timestamp = new Date().toLocaleTimeString();
+                
+                const item = document.createElement('div');
+                item.className = 'activity-item';
+                item.innerHTML = `
+                    <span class="timestamp">${timestamp}</span>
+                    ${message}
+                `;
+                
+                log.insertBefore(item, log.firstChild);
+                
+                // Keep only the latest items
+                while (log.children.length > this.maxActivityItems) {
+                    log.removeChild(log.lastChild);
+                }
+            }
+
+            startMonitoring() {
+                setInterval(() => {
+                    this.updateEventData();
+                }, this.updateInterval);
+                
+                // Add some random activity for demo purposes
+                setInterval(() => {
+                    if (Math.random() < 0.3) { // 30% chance every interval
+                        const activities = [
+                            '👤 New user registered',
+                            '🔍 User browsing events',
+                            '💳 Payment processed',
+                            '📧 Confirmation email sent',
+                            '🔄 Kafka message processed'
+                        ];
+                        const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+                        this.addActivity(randomActivity);
+                    }
+                }, this.updateInterval);
+            }
+        }
+
+        // Initialize the monitor when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const monitor = new BookingMonitor();
+            monitor.init();
+        });
+    </script>
+</body>
+</html> 

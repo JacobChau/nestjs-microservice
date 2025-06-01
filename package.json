@@ -1,0 +1,57 @@
+{
+  "name": "nestjs-microservice",
+  "version": "1.0.0",
+  "description": "NestJS Kafka Microservices Demo - Ticket Booking System",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start:api": "ts-node -r tsconfig-paths/register apps/api-gateway/main.ts",
+    "start:event": "ts-node -r tsconfig-paths/register apps/event-service/main.ts",
+    "start:auth": "ts-node -r tsconfig-paths/register apps/auth-service/main.ts",
+    "start:booking": "ts-node -r tsconfig-paths/register apps/booking-service/main.ts",
+    "start:all": "concurrently \"npm run start:event\" \"npm run start:auth\" \"npm run start:booking\" \"npm run start:api\"",
+    "dev:api": "nodemon --watch 'apps/**/*.ts' --exec 'ts-node -r tsconfig-paths/register apps/api-gateway/main.ts'",
+    "dev:event": "nodemon --watch 'apps/**/*.ts' --exec 'ts-node -r tsconfig-paths/register apps/event-service/main.ts'",
+    "dev:auth": "nodemon --watch 'apps/**/*.ts' --exec 'ts-node -r tsconfig-paths/register apps/auth-service/main.ts'",
+    "dev:booking": "nodemon --watch 'apps/**/*.ts' --exec 'ts-node -r tsconfig-paths/register apps/booking-service/main.ts'"
+  },
+  "keywords": [
+    "nestjs",
+    "kafka",
+    "microservices",
+    "ticket-booking"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/microservices": "^10.0.0",
+    "@nestjs/mongoose": "^10.0.0",
+    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/typeorm": "^10.0.0",
+    "@types/bcrypt": "^5.0.2",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.0",
+    "kafkajs": "^2.2.4",
+    "mongodb": "^6.16.0",
+    "mongoose": "^7.0.0",
+    "mysql2": "^3.0.0",
+    "pg": "^8.10.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.16",
+    "typescript": "^5.1.3",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@types/mongoose": "^5.11.97",
+    "@types/node": "^20.3.1",
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0"
+  }
+}

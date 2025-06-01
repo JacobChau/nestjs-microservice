@@ -1,0 +1,549 @@
+{
+  "info": {
+    "name": "Seminar Demo - Ticket Booking System",
+    "description": "Simplified collection for seminar presentation focusing on concurrent booking and microservices benefits",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "eventId",
+      "value": "{{EVENT_ID}}",
+      "type": "string"
+    },
+    {
+      "key": "user1Token",
+      "value": "{{USER1_TOKEN}}",
+      "type": "string"
+    },
+    {
+      "key": "user2Token", 
+      "value": "{{USER2_TOKEN}}",
+      "type": "string"
+    },
+    {
+      "key": "user3Token",
+      "value": "{{USER3_TOKEN}}",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🎯 Demo Setup",
+      "item": [
+        {
+          "name": "1. Get Event Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "Get the Taylor Swift concert details and available seats"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Check Available Seats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/seats",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId}}", "seats"]
+            },
+            "description": "See all available seats for the concert"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔥 Demo 1: Concurrent Booking",
+      "item": [
+        {
+          "name": "User 1 - Book Seat A1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.id) {",
+                  "        pm.collectionVariables.set('bookingId', response.data.id);",
+                  "        console.log('✅ User 1 successfully booked seat A1');",
+                  "        console.log('Booking ID:', response.data.id);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ User 1 failed to book seat A1');",
+                  "    console.log('Error:', pm.response.json().error);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user1Token}}",
+                "description": "User 1 authentication token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A1\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "User 1 attempts to book seat A1"
+          },
+          "response": []
+        },
+        {
+          "name": "User 2 - Book Seat A1 (Same Seat!)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success) {",
+                  "        console.log('✅ User 2 successfully booked seat A1');",
+                  "    } else {",
+                  "        console.log('❌ User 2 failed - seat conflict detected');",
+                  "        console.log('Error:', response.error);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ User 2 failed to book seat A1');",
+                  "    console.log('Error:', pm.response.json().error);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user2Token}}",
+                "description": "User 2 authentication token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A1\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "User 2 attempts to book the SAME seat A1 - should fail"
+          },
+          "response": []
+        },
+        {
+          "name": "User 3 - Book Seat A1 (Same Seat!)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success) {",
+                  "        console.log('✅ User 3 successfully booked seat A1');",
+                  "    } else {",
+                  "        console.log('❌ User 3 failed - seat conflict detected');",
+                  "        console.log('Error:', response.error);",
+                  "    }",
+                  "} else {",
+                  "    console.log('❌ User 3 failed to book seat A1');",
+                  "    console.log('Error:', pm.response.json().error);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user3Token}}",
+                "description": "User 3 authentication token"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A1\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "User 3 attempts to book the SAME seat A1 - should also fail"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "💳 Demo 2: Booking Process",
+      "item": [
+        {
+          "name": "1. User 1 Books Seat A2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.id) {",
+                  "        pm.collectionVariables.set('bookingId', response.data.id);",
+                  "        console.log('✅ Booking created with ID:', response.data.id);",
+                  "        console.log('Status:', response.data.status);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A2\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "Create a new booking (status: pending)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Check Booking Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{user1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}"]
+            },
+            "description": "Check the booking status (should be 'pending')"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Confirm Payment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentId\": \"payment_demo_123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}", "confirm"]
+            },
+            "description": "Confirm payment (status changes to 'confirmed')"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Check Final Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{user1Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}"]
+            },
+            "description": "Check final booking status (should be 'confirmed')"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "⏰ Demo 3: Timeout Simulation",
+      "item": [
+        {
+          "name": "1. User 2 Books Seat A3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.id) {",
+                  "        pm.collectionVariables.set('bookingId', response.data.id);",
+                  "        console.log('✅ Booking created - now user disappears without paying...');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A3\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "User books seat but doesn't pay (simulates timeout scenario)"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Check Seat is Reserved",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/seats",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId}}", "seats"]
+            },
+            "description": "Verify seat A3 is now reserved"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Cancel Booking (Simulate Timeout)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{user2Token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/{{bookingId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings", "{{bookingId}}", "cancel"]
+            },
+            "description": "Cancel the booking (simulates automatic timeout)"
+          },
+          "response": []
+        },
+        {
+          "name": "4. Check Seat is Available Again",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}/seats",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId}}", "seats"]
+            },
+            "description": "Verify seat A3 is available again"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔧 Demo 4: Service Resilience",
+      "item": [
+        {
+          "name": "1. Normal Booking (Before Crash)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user1Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A4\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "Normal booking before service crash"
+          },
+          "response": []
+        },
+        {
+          "name": "2. Booking During Service Outage",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user2Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A5\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "Try booking while booking service is down (run after: docker-compose stop booking-service)"
+          },
+          "response": []
+        },
+        {
+          "name": "3. Booking After Service Recovery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{user3Token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"seatIds\": [\"A6\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": ["{{baseUrl}}"],
+              "path": ["bookings"]
+            },
+            "description": "Booking after service recovery (run after: docker-compose start booking-service)"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Load environment variables if available",
+          "if (pm.environment.get('EVENT_ID')) {",
+          "    pm.collectionVariables.set('eventId', pm.environment.get('EVENT_ID'));",
+          "}",
+          "if (pm.environment.get('USER1_TOKEN')) {",
+          "    pm.collectionVariables.set('user1Token', pm.environment.get('USER1_TOKEN'));",
+          "}",
+          "if (pm.environment.get('USER2_TOKEN')) {",
+          "    pm.collectionVariables.set('user2Token', pm.environment.get('USER2_TOKEN'));",
+          "}",
+          "if (pm.environment.get('USER3_TOKEN')) {",
+          "    pm.collectionVariables.set('user3Token', pm.environment.get('USER3_TOKEN'));",
+          "}"
+        ]
+      }
+    }
+  ]
+} 

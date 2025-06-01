@@ -1,0 +1,58 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm up - 5 users/sec"
+    - duration: 60
+      arrivalRate: 20
+      name: "Peak load - 20 users/sec"
+    - duration: 30
+      arrivalRate: 2
+      name: "Cool down - 2 users/sec"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+
+scenarios:
+  - name: "Concurrent ticket booking"
+    weight: 100
+    flow:
+      # Step 1: Login with random demo user
+      - post:
+          url: "/auth/login"
+          json:
+            email: "demo{{ $randomInt(1, 50) }}@example.com"
+            password: "demo123"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          expect:
+            - statusCode: 200
+
+      # Step 2: Get available events
+      - get:
+          url: "/events"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+
+      # Step 3: Attempt to book a random seat
+      - post:
+          url: "/bookings"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            eventId: "jazz_night_2024"
+            seatIds: ["{{ $randomString() }}{{ $randomInt(1, 100) }}"]
+          expect:
+            - statusCode: [201, 409] # 201 = success, 409 = seat taken
+
+      # Step 4: Check booking status (if successful)
+      - get:
+          url: "/bookings"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200 
