@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ClientKafka } from '@nestjs/microservices';
+import { ClientKafka, EventPattern, Payload } from '@nestjs/microservices';
 import { Event, EventDocument } from '../schemas/event.schema';
 import { Seat, SeatDocument } from '../schemas/seat.schema';
 import { CreateEventDto, KafkaTopics } from '@app/common';
@@ -72,6 +72,19 @@ export class EventService {
     }).exec();
   }
 
+  async getAllSeats(eventId: string): Promise<Seat[]> {
+    // Get all seats for the event
+    const seats = await this.seatModel.find({ eventId }).exec();
+    
+    // Emit a request to get current bookings for this event
+    this.kafkaClient.emit('BOOKING_GET_BY_EVENT', { eventId });
+    
+    // For now, return seats as-is. In a more complex setup, we'd wait for booking data
+    // to merge with seat data. For this demo, we'll handle reservation status 
+    // updates through Kafka events when bookings are created/cancelled
+    return seats.map(seat => seat.toObject());
+  }
+
   private async generateSeats(eventId: string, totalSeats: number, basePrice: number): Promise<void> {
     const seats = [];
     const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -110,5 +123,93 @@ export class EventService {
     }
 
     await this.seatModel.insertMany(seats);
+  }
+
+  // Kafka Event Handlers for Seat Status Updates
+  @EventPattern('booking.created')
+  async handleBookingCreated(@Payload() data: any) {
+    try {
+      console.log('🎫 Event Service - Booking created:', data);
+      
+      if (data.seatIds && Array.isArray(data.seatIds)) {
+        // Update seat status to reserved
+        await this.seatModel.updateMany(
+          { id: { $in: data.seatIds } },
+          { 
+            status: 'reserved',
+            reservedBy: data.userId,
+            reservedUntil: data.expiresAt ? new Date(data.expiresAt) : new Date(Date.now() + 30 * 60 * 1000) // 30 minutes default
+          }
+        );
+        console.log(`✅ Updated ${data.seatIds.length} seats to reserved status`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to update seat status on booking created:', error);
+    }
+  }
+
+  @EventPattern('booking.confirmed')
+  async handleBookingConfirmed(@Payload() data: any) {
+    try {
+      console.log('✅ Event Service - Booking confirmed:', data);
+      
+      if (data.seatIds && Array.isArray(data.seatIds)) {
+        // Update seat status to booked
+        await this.seatModel.updateMany(
+          { id: { $in: data.seatIds } },
+          { 
+            status: 'booked',
+            reservedUntil: null // Clear reservation timeout
+          }
+        );
+        console.log(`✅ Updated ${data.seatIds.length} seats to booked status`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to update seat status on booking confirmed:', error);
+    }
+  }
+
+  @EventPattern('booking.cancelled')
+  async handleBookingCancelled(@Payload() data: any) {
+    try {
+      console.log('🚫 Event Service - Booking cancelled:', data);
+      
+      if (data.seatIds && Array.isArray(data.seatIds)) {
+        // Update seat status back to available
+        await this.seatModel.updateMany(
+          { id: { $in: data.seatIds } },
+          { 
+            status: 'available',
+            reservedBy: null,
+            reservedUntil: null
+          }
+        );
+        console.log(`✅ Updated ${data.seatIds.length} seats back to available status`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to update seat status on booking cancelled:', error);
+    }
+  }
+
+  @EventPattern('booking.expired')
+  async handleBookingExpired(@Payload() data: any) {
+    try {
+      console.log('⏰ Event Service - Booking expired:', data);
+      
+      if (data.seatIds && Array.isArray(data.seatIds)) {
+        // Update seat status back to available
+        await this.seatModel.updateMany(
+          { id: { $in: data.seatIds } },
+          { 
+            status: 'available',
+            reservedBy: null,
+            reservedUntil: null
+          }
+        );
+        console.log(`✅ Updated ${data.seatIds.length} seats back to available after expiration`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to update seat status on booking expired:', error);
+    }
   }
 } 

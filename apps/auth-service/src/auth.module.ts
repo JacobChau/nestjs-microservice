@@ -15,7 +15,7 @@ import { UserEntity } from './entities/user.entity';
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_DATABASE || 'users_demo',
       entities: [UserEntity],
-      synchronize: false, // Use migrations instead
+      synchronize: true, // Auto-create tables for demo
       logging: ['error'],
       migrations: ['dist/migrations/*.js'],
       migrationsRun: false, // Run migrations manually

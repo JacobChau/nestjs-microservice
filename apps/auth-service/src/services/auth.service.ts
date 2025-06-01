@@ -99,7 +99,22 @@ export class AuthService {
     // In a real application, verify JWT token
     // This is a simplified validation for demo
     if (token && token.startsWith('auth_token_')) {
-      const userId = token.split('_')[2];
+      // Extract userId from token format: auth_token_user_timestamp_randompart_finaltimestamp
+      // Split and find the part that starts with 'user_'
+      const parts = token.split('_');
+      let userId = '';
+      
+      // Find the user ID that starts with 'user_'
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (parts[i] === 'user') {
+          userId = `${parts[i]}_${parts[i + 1]}_${parts[i + 2]}`;
+          break;
+        }
+      }
+      
+      if (!userId) {
+        return { error: 'Invalid token format' };
+      }
       
       // Check if user exists
       const userEntity = await this.userRepository.findOne({ 

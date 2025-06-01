@@ -26,4 +26,14 @@ export class EventController {
   async updateEvent(@Payload() data: { id: string; updateData: any }) {
     return this.eventService.updateEvent(data.id, data.updateData);
   }
+
+  @MessagePattern(KafkaTopics.SEAT_FIND_AVAILABLE)
+  async getAvailableSeats(@Payload() data: { eventId: string }) {
+    return this.eventService.getAvailableSeats(data.eventId);
+  }
+
+  @MessagePattern('SEAT_FIND_ALL')
+  async getAllSeats(@Payload() data: { eventId: string }) {
+    return this.eventService.getAllSeats(data.eventId);
+  }
 } 

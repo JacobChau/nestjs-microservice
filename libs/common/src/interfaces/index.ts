@@ -50,6 +50,7 @@ export interface Booking {
   totalAmount: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'refunded';
   paymentId?: string;
+  expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

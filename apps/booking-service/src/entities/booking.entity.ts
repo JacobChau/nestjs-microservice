@@ -30,6 +30,9 @@ export class BookingEntity {
   @Column({ nullable: true })
   paymentId?: string;
 
+  @Column({ nullable: true })
+  expiresAt?: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

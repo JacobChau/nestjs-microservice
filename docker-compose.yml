@@ -70,6 +70,21 @@ services:
     networks:
       - kafka-net
 
+  # Redis for seat reservations and caching
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - kafka-net
+
   # PostgreSQL for Auth & Booking Services
   postgres-db:
     image: postgres:14
